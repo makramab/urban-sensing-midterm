@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Air Quality Map — Park Buffer Experiment</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+  #map { width: 100%; height: 100vh; }
+
+  .info-panel {
+    position: absolute; top: 10px; right: 10px; z-index: 1000;
+    background: white; padding: 14px 18px; border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25); max-width: 340px;
+    font-size: 13px; line-height: 1.5;
+  }
+  .info-panel h2 { font-size: 15px; margin-bottom: 6px; }
+  .info-panel p { color: #555; margin-bottom: 8px; }
+  .info-panel table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+  .info-panel th, .info-panel td { text-align: left; padding: 3px 6px; border-bottom: 1px solid #eee; }
+  .info-panel th { color: #333; font-weight: 600; }
+
+  .legend {
+    position: absolute; bottom: 30px; left: 10px; z-index: 1000;
+    background: white; padding: 12px 16px; border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25); font-size: 12px;
+  }
+  .legend h4 { margin-bottom: 6px; font-size: 13px; }
+  .legend-row { display: flex; align-items: center; margin-bottom: 3px; }
+  .legend-circle {
+    width: 14px; height: 14px; border-radius: 50%; margin-right: 8px;
+    border: 1.5px solid rgba(0,0,0,0.3); flex-shrink: 0;
+  }
+
+  .layer-toggle {
+    position: absolute; top: 10px; left: 55px; z-index: 1000;
+    background: white; padding: 10px 14px; border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25); font-size: 12px;
+  }
+  .layer-toggle h4 { margin-bottom: 6px; font-size: 13px; }
+  .layer-toggle label { display: block; margin-bottom: 3px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="info-panel">
+  <h2>Park Buffer Air Quality</h2>
+  <p>Jackson Heights, Queens &mdash; March 31, 2026<br>
+     Atmotube Pro &bull; 1-min interval readings</p>
+  <p><strong>42 GPS-tagged readings</strong> (Data_1 + Data_2 merged)</p>
+  <table>
+    <tr><th>Zone</th><th>Time</th><th>Readings</th></tr>
+    <tr><td style="color:#e63946;">Broadway</td><td>18:00–18:06</td><td>7</td></tr>
+    <tr><td style="color:#2a9d8f;">Park Interior</td><td>18:07–18:16</td><td>10</td></tr>
+    <tr><td style="color:#457b9d;">Quiet Side</td><td>18:17–18:22</td><td>6</td></tr>
+    <tr><td style="color:#999;">Transit</td><td>17:46–17:59, 18:23–18:29</td><td>19</td></tr>
+  </table>
+  <p style="font-size:11px; color:#888; margin-top:8px;">Click any marker for full sensor data. Toggle layers at top-left.</p>
+</div>
+
+<div class="layer-toggle" id="layerToggle">
+  <h4>Color by</h4>
+  <label><input type="radio" name="layer" value="zone" checked> Zone</label>
+  <label><input type="radio" name="layer" value="aqs"> AQS</label>
+  <label><input type="radio" name="layer" value="pm25"> PM2.5</label>
+</div>
+
+<div class="legend" id="legendZone">
+  <h4>Zone</h4>
+  <div class="legend-row"><div class="legend-circle" style="background:#e63946;"></div> Broadway (traffic side)</div>
+  <div class="legend-row"><div class="legend-circle" style="background:#2a9d8f;"></div> Park Interior</div>
+  <div class="legend-row"><div class="legend-circle" style="background:#457b9d;"></div> Quiet Side (residential)</div>
+  <div class="legend-row"><div class="legend-circle" style="background:#bbb;"></div> Transit</div>
+</div>
+
+<div class="legend" id="legendAQS" style="display:none;">
+  <h4>Air Quality Score (AQS)</h4>
+  <div class="legend-row"><div class="legend-circle" style="background:#00e400;"></div> 96–100 Excellent</div>
+  <div class="legend-row"><div class="legend-circle" style="background:#92d050;"></div> 91–95 Good</div>
+  <div class="legend-row"><div class="legend-circle" style="background:#ffde33;"></div> 81–90 Moderate</div>
+  <div class="legend-row"><div class="legend-circle" style="background:#ff9933;"></div> 61–80 Poor</div>
+  <div class="legend-row"><div class="legend-circle" style="background:#cc0033;"></div> 0–60 Very Poor</div>
+</div>
+
+<div class="legend" id="legendPM25" style="display:none;">
+  <h4>PM2.5 (&mu;g/m&sup3;)</h4>
+  <div class="legend-row"><div class="legend-circle" style="background:#00e400;"></div> 0 – 3.0 Low</div>
+  <div class="legend-row"><div class="legend-circle" style="background:#92d050;"></div> 3.0 – 5.0</div>
+  <div class="legend-row"><div class="legend-circle" style="background:#ffde33;"></div> 5.0 – 6.5</div>
+  <div class="legend-row"><div class="legend-circle" style="background:#ff9933;"></div> 6.5 – 7.5</div>
+  <div class="legend-row"><div class="legend-circle" style="background:#cc0033;"></div> 7.5+ High</div>
+  <div class="legend-row"><div class="legend-circle" style="background:#ccc;"></div> No PM data</div>
+</div>
+
+<script>
+// ── Merged data (Data_1 + Data_2), sorted chronologically ──
+const data = [
+  // Transit (before experiment) — Data_1
+  {time:"17:46",voc:0.01,aqs:99,temp:29,hum:36,pres:1008.63,pm1:null,pm25:null,pm10:null,lat:40.7425178,lng:-73.8911136,zone:"Transit"},
+  {time:"17:47",voc:0.181,aqs:89,temp:28.5,hum:36,pres:1008.6,pm1:null,pm25:null,pm10:null,lat:40.7425178,lng:-73.8911136,zone:"Transit"},
+  {time:"17:48",voc:0.225,aqs:86,temp:28.3,hum:39,pres:1008.5,pm1:null,pm25:null,pm10:null,lat:40.742515,lng:-73.8911121,zone:"Transit"},
+  {time:"17:49",voc:0.245,aqs:85,temp:28,hum:41,pres:1008.5,pm1:null,pm25:null,pm10:null,lat:40.7425095,lng:-73.8911095,zone:"Transit"},
+  {time:"17:50",voc:0.259,aqs:84,temp:28,hum:42,pres:1008.7,pm1:1.0,pm25:2.0,pm10:2.8,lat:40.742492,lng:-73.8910983,zone:"Transit"},
+  {time:"17:51",voc:0.256,aqs:84,temp:28.2,hum:39,pres:1009.5,pm1:1.0,pm25:2.1,pm10:2.8,lat:40.7425663,lng:-73.890994,zone:"Transit"},
+  {time:"17:52",voc:0.18,aqs:89,temp:28.2,hum:38,pres:1009.5,pm1:null,pm25:null,pm10:null,lat:40.7424953,lng:-73.8910948,zone:"Transit"},
+  {time:"17:53",voc:0.148,aqs:91,temp:27.9,hum:37,pres:1009.6,pm1:null,pm25:null,pm10:null,lat:40.7431553,lng:-73.8904532,zone:"Transit"},
+  {time:"17:54",voc:0.122,aqs:92,temp:27.3,hum:39,pres:1009.7,pm1:null,pm25:null,pm10:null,lat:40.7432211,lng:-73.8899287,zone:"Transit"},
+  {time:"17:55",voc:0.105,aqs:93,temp:26.9,hum:39,pres:1009.9,pm1:null,pm25:null,pm10:null,lat:40.7433309,lng:-73.8889039,zone:"Transit"},
+  {time:"17:56",voc:0.08,aqs:95,temp:26.5,hum:38,pres:1010.1,pm1:null,pm25:null,pm10:null,lat:40.7434586,lng:-73.8880657,zone:"Transit"},
+  {time:"17:57",voc:0.079,aqs:95,temp:26.5,hum:39,pres:1010.4,pm1:null,pm25:null,pm10:null,lat:40.7435899,lng:-73.8872789,zone:"Transit"},
+  {time:"17:58",voc:0.053,aqs:96,temp:26.1,hum:41,pres:1010.3,pm1:null,pm25:null,pm10:null,lat:40.7436521,lng:-73.8870307,zone:"Transit"},
+  {time:"17:59",voc:0.048,aqs:97,temp:25.9,hum:41,pres:1010.4,pm1:null,pm25:null,pm10:null,lat:40.7439086,lng:-73.8859739,zone:"Transit"},
+  // Broadway — Data_1
+  {time:"18:00",voc:0.045,aqs:91,temp:26,hum:41,pres:1010.3,pm1:5.9,pm25:7.3,pm10:8.6,lat:40.7442988,lng:-73.8860522,zone:"Broadway"},
+  {time:"18:01",voc:0.038,aqs:92,temp:25.8,hum:41,pres:1010.1,pm1:5.5,pm25:7.3,pm10:8.2,lat:40.7443472,lng:-73.8860758,zone:"Broadway"},
+  {time:"18:02",voc:0.021,aqs:91,temp:25,hum:43,pres:1010.3,pm1:5.8,pm25:7.2,pm10:8.4,lat:40.7442995,lng:-73.8870109,zone:"Broadway"},
+  {time:"18:03",voc:0.01,aqs:91,temp:24.6,hum:43,pres:1010.1,pm1:5.9,pm25:7.6,pm10:8.4,lat:40.7444104,lng:-73.8870916,zone:"Broadway"},
+  {time:"18:04",voc:0.01,aqs:92,temp:24.9,hum:43,pres:1010.2,pm1:5.5,pm25:7.0,pm10:8.0,lat:40.7446292,lng:-73.8871748,zone:"Broadway"},
+  {time:"18:05",voc:0.01,aqs:90,temp:24.9,hum:43,pres:1010.3,pm1:6.3,pm25:7.7,pm10:9.1,lat:40.7439125,lng:-73.8868502,zone:"Broadway"},
+  {time:"18:06",voc:0.01,aqs:92,temp:24.6,hum:43,pres:1010.2,pm1:5.2,pm25:6.5,pm10:7.5,lat:40.7440916,lng:-73.8862896,zone:"Broadway"},
+  // Park Interior — Data_1
+  {time:"18:07",voc:0.01,aqs:91,temp:24.5,hum:43,pres:1010.2,pm1:5.9,pm25:7.3,pm10:8.7,lat:40.7437254,lng:-73.8867767,zone:"Park"},
+  {time:"18:08",voc:0.01,aqs:91,temp:24.6,hum:43,pres:1010.2,pm1:5.6,pm25:7.1,pm10:8.1,lat:40.7442352,lng:-73.8871656,zone:"Park"},
+  {time:"18:09",voc:0.01,aqs:91,temp:24.5,hum:43,pres:1010.2,pm1:5.9,pm25:7.5,pm10:8.4,lat:40.7438905,lng:-73.8873639,zone:"Park"},
+  {time:"18:10",voc:0.01,aqs:92,temp:24.4,hum:45,pres:1010.4,pm1:5.6,pm25:6.9,pm10:8.4,lat:40.7440941,lng:-73.8870498,zone:"Park"},
+  {time:"18:11",voc:0.01,aqs:99,temp:24.4,hum:45,pres:1010.3,pm1:null,pm25:null,pm10:null,lat:40.7443472,lng:-73.8860758,zone:"Park"},
+  {time:"18:12",voc:0.01,aqs:92,temp:24.3,hum:45,pres:1010.2,pm1:5.1,pm25:6.4,pm10:7.8,lat:40.744214,lng:-73.8863527,zone:"Park"},
+  {time:"18:13",voc:0.01,aqs:92,temp:24.3,hum:45,pres:1010.3,pm1:5.6,pm25:7.3,pm10:8.3,lat:40.744256,lng:-73.8871138,zone:"Park"},
+  {time:"18:14",voc:0.01,aqs:99,temp:24.3,hum:45,pres:1010.3,pm1:null,pm25:null,pm10:null,lat:40.7439842,lng:-73.8871072,zone:"Park"},
+  {time:"18:15",voc:0.01,aqs:99,temp:24,hum:45,pres:1010.4,pm1:null,pm25:null,pm10:null,lat:40.7438797,lng:-73.8871549,zone:"Park"},
+  {time:"18:16",voc:0.01,aqs:91,temp:23.6,hum:45,pres:1010.2,pm1:6.1,pm25:7.7,pm10:8.9,lat:40.7439635,lng:-73.8871717,zone:"Park"},
+  // Quiet Side — Data_1 + Data_2
+  {time:"18:17",voc:0.01,aqs:91,temp:23.4,hum:47,pres:1010.3,pm1:5.7,pm25:7.1,pm10:8.1,lat:40.7440426,lng:-73.88717,zone:"Quiet Side"},
+  {time:"18:18",voc:0.01,aqs:91,temp:23.4,hum:47,pres:1010.3,pm1:5.8,pm25:7.5,pm10:8.2,lat:40.7447583,lng:-73.8872336,zone:"Quiet Side"},
+  {time:"18:19",voc:0.01,aqs:91,temp:23.2,hum:48,pres:1010.3,pm1:5.7,pm25:7.1,pm10:8.2,lat:40.7443522,lng:-73.886987,zone:"Quiet Side"},
+  {time:"18:21",voc:0.01,aqs:91,temp:23.5,hum:45,pres:1010.4,pm1:5.6,pm25:7.3,pm10:8.4,lat:40.7443822,lng:-73.8867365,zone:"Quiet Side"},
+  {time:"18:22",voc:0.01,aqs:91,temp:23.5,hum:45,pres:1010.5,pm1:6.2,pm25:7.7,pm10:8.9,lat:40.744116,lng:-73.8871224,zone:"Quiet Side"},
+  // Transit (after experiment) — Data_2
+  {time:"18:23",voc:0.01,aqs:91,temp:23.5,hum:45,pres:1010.5,pm1:6.0,pm25:7.3,pm10:8.8,lat:40.7436341,lng:-73.8872563,zone:"Transit"},
+  {time:"18:24",voc:0.01,aqs:91,temp:23.6,hum:45,pres:1010.4,pm1:5.7,pm25:7.1,pm10:8.2,lat:40.7435363,lng:-73.8880148,zone:"Transit"},
+  {time:"18:25",voc:0.01,aqs:92,temp:23.7,hum:45,pres:1010.1,pm1:5.2,pm25:6.9,pm10:7.9,lat:40.7434076,lng:-73.888556,zone:"Transit"},
+  // Transit (after experiment) — Data_2
+  {time:"18:26",voc:0.01,aqs:91,temp:23.8,hum:45,pres:1009.9,pm1:6.0,pm25:7.4,pm10:8.4,lat:40.7432593,lng:-73.8895852,zone:"Transit"},
+  {time:"18:27",voc:0.01,aqs:93,temp:23.8,hum:45,pres:1009.8,pm1:4.8,pm25:6.1,pm10:7.1,lat:40.7431146,lng:-73.890385,zone:"Transit"},
+  {time:"18:28",voc:0.01,aqs:92,temp:23.9,hum:45,pres:1009.8,pm1:5.1,pm25:6.6,pm10:7.6,lat:40.7428661,lng:-73.8908647,zone:"Transit"},
+  {time:"18:29",voc:0.011,aqs:99,temp:23.8,hum:45,pres:1009.7,pm1:null,pm25:null,pm10:null,lat:40.7443822,lng:-73.8867365,zone:"Transit"}
+];
+
+// ── Color scales ──────────────────────────────────────
+const zoneColors = {
+  'Broadway':    '#e63946',
+  'Park':        '#2a9d8f',
+  'Quiet Side':  '#457b9d',
+  'Transit':     '#bbb'
+};
+
+function aqsColor(aqs) {
+  if (aqs >= 96) return '#00e400';
+  if (aqs >= 91) return '#92d050';
+  if (aqs >= 81) return '#ffde33';
+  if (aqs >= 61) return '#ff9933';
+  return '#cc0033';
+}
+
+function pm25Color(pm25) {
+  if (pm25 === null) return '#ccc';
+  if (pm25 < 3)   return '#00e400';
+  if (pm25 < 5)   return '#92d050';
+  if (pm25 < 6.5) return '#ffde33';
+  if (pm25 < 7.5) return '#ff9933';
+  return '#cc0033';
+}
+
+function pmLabel(v) { return v !== null ? v.toFixed(1) : '&mdash;'; }
+
+// ── Map ───────────────────────────────────────────────
+const map = L.map('map').setView([40.7437, -73.889], 15);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+// ── Zone-colored path segments ────────────────────────
+const zones = ['Transit','Broadway','Park','Quiet Side'];
+let currentZone = null;
+let segment = [];
+
+data.forEach((d, i) => {
+  if (d.zone !== currentZone) {
+    // draw previous segment
+    if (segment.length >= 2) {
+      L.polyline(segment, {
+        color: zoneColors[currentZone], weight: 4, opacity: 0.6
+      }).addTo(map);
+    }
+    // connect to new segment with dashed line
+    if (segment.length > 0) {
+      L.polyline([segment[segment.length - 1], [d.lat, d.lng]], {
+        color: '#999', weight: 2, opacity: 0.4, dashArray: '4 4'
+      }).addTo(map);
+    }
+    currentZone = d.zone;
+    segment = [];
+  }
+  segment.push([d.lat, d.lng]);
+});
+// draw last segment
+if (segment.length >= 2) {
+  L.polyline(segment, {
+    color: zoneColors[currentZone], weight: 4, opacity: 0.6
+  }).addTo(map);
+}
+
+// ── Create marker layers ──────────────────────────────
+const zoneLayer = L.layerGroup();
+const aqsLayer = L.layerGroup();
+const pm25Layer = L.layerGroup();
+
+data.forEach((d, i) => {
+  const zoneBadgeColor = zoneColors[d.zone];
+  const popup = `
+    <div style="font-family:system-ui;font-size:12px;line-height:1.6;min-width:200px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <span style="background:${zoneBadgeColor};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">${d.zone}</span>
+        <strong style="font-size:13px;">${d.time}</strong>
+      </div>
+      <hr style="margin:4px 0;border:none;border-top:1px solid #ddd;">
+      <table style="width:100%;font-size:12px;border-collapse:collapse;">
+        <tr><td style="padding:2px 0;"><strong>AQS</strong></td><td>${d.aqs}</td><td><strong>VOC</strong></td><td>${d.voc} ppm</td></tr>
+        <tr><td style="padding:2px 0;"><strong>PM1</strong></td><td>${pmLabel(d.pm1)}</td><td><strong>PM2.5</strong></td><td>${pmLabel(d.pm25)}</td></tr>
+        <tr><td style="padding:2px 0;"><strong>PM10</strong></td><td>${pmLabel(d.pm10)} &mu;g/m&sup3;</td><td></td><td></td></tr>
+      </table>
+      <hr style="margin:4px 0;border:none;border-top:1px solid #ddd;">
+      <span style="color:#666;"><strong>Temp:</strong> ${d.temp}&deg;C &nbsp; <strong>Hum:</strong> ${d.hum}% &nbsp; <strong>P:</strong> ${d.pres} mbar</span><br>
+      <span style="color:#999;font-size:10px;">${d.lat.toFixed(5)}, ${d.lng.toFixed(5)}</span>
+    </div>`;
+
+  zoneLayer.addLayer(L.circleMarker([d.lat, d.lng], {
+    radius: 9, fillColor: zoneColors[d.zone], color: '#333',
+    weight: 1.5, fillOpacity: 0.85
+  }).bindPopup(popup));
+
+  aqsLayer.addLayer(L.circleMarker([d.lat, d.lng], {
+    radius: 9, fillColor: aqsColor(d.aqs), color: '#333',
+    weight: 1.5, fillOpacity: 0.85
+  }).bindPopup(popup));
+
+  pm25Layer.addLayer(L.circleMarker([d.lat, d.lng], {
+    radius: 9, fillColor: pm25Color(d.pm25), color: '#333',
+    weight: 1.5, fillOpacity: 0.85
+  }).bindPopup(popup));
+});
+
+// Default: show Zone layer
+zoneLayer.addTo(map);
+
+// ── Layer toggle ──────────────────────────────────────
+const layers = { zone: zoneLayer, aqs: aqsLayer, pm25: pm25Layer };
+const legends = { zone: 'legendZone', aqs: 'legendAQS', pm25: 'legendPM25' };
+let activeLayer = 'zone';
+
+document.querySelectorAll('input[name="layer"]').forEach(radio => {
+  radio.addEventListener('change', function () {
+    map.removeLayer(layers[activeLayer]);
+    document.getElementById(legends[activeLayer]).style.display = 'none';
+    activeLayer = this.value;
+    layers[activeLayer].addTo(map);
+    document.getElementById(legends[activeLayer]).style.display = '';
+  });
+});
+
+// Fit map to data bounds
+const allCoords = data.map(d => [d.lat, d.lng]);
+map.fitBounds(allCoords, { padding: [60, 60] });
+</script>
+</body>
+</html>
