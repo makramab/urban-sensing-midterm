@@ -11,17 +11,17 @@ export function RawDataSlide() {
   ]
 
   return (
-    <div className="max-w-4xl w-full space-y-8">
+    <div className="max-w-6xl w-full space-y-8">
       <div className="space-y-3">
-        <p className="text-sm font-medium text-primary uppercase tracking-widest">Data</p>
-        <h2 className="text-3xl md:text-5xl font-bold text-foreground">Raw Readings</h2>
-        <p className="text-lg text-muted-foreground">
-          43 total readings from two CSV exports, labeled by zone
+        <p className="text-base font-medium text-primary uppercase tracking-widest">Data</p>
+        <h2 className="text-4xl md:text-6xl font-bold text-foreground">Raw Readings</h2>
+        <p className="text-xl text-muted-foreground">
+          22 experiment readings across three zones, labeled by location
         </p>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full text-sm">
+        <table className="w-full text-base">
           <thead>
             <tr className="bg-muted/50">
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Time</th>
@@ -55,8 +55,8 @@ export function RawDataSlide() {
         </table>
       </div>
 
-      <p className="text-xs text-muted-foreground text-center">
-        Sample of 8 readings shown above &mdash; full dataset contains 43 readings (22 experiment + 21 transit)
+      <p className="text-base text-muted-foreground text-center">
+        Sample of 8 readings shown above &mdash; full experiment dataset contains 22 readings across 3 zones
       </p>
     </div>
   )

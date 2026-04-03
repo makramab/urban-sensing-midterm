@@ -35,7 +35,7 @@ export function SlideShell({ children, slideKey, direction }: Props) {
             animate="center"
             exit="exit"
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="min-h-full flex items-center justify-center p-6 pb-16 md:p-12 md:pb-20 lg:p-16 lg:pb-24"
+            className="min-h-full flex items-center justify-center p-4 pb-16 md:p-8 md:pb-20 lg:p-10 lg:pb-24"
           >
             {children}
           </m.div>
