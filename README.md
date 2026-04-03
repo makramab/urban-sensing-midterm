@@ -1,193 +1,100 @@
-Welcome to your new TanStack Start app! 
+# Park Buffer Air Quality — Urban Sensing Midterm
 
-# Getting Started
+A slide-based web presentation for the NYU CUSP Urban Sensing midterm, investigating whether park proximity improves street-level air quality before leaf-out. Built with TanStack Start, React, Tailwind CSS, and Framer Motion, deployed on Cloudflare Workers.
 
-To run this application:
+## What This Is
+
+A 10-slide interactive presentation showing results from a walking transect experiment conducted on March 31, 2026 in Jackson Heights, Queens. PM2.5 was measured with an Atmotube Pro sensor across three zones (Broadway, Park Interior, Quiet Side) to test whether the physical open space of a park reduces particulate pollution before trees have leaves.
+
+**Key finding:** No PM2.5 gradient was detected — all three zones measured ~7.2 µg/m³, suggesting that the leaf canopy, not open space alone, is the active filtering mechanism.
+
+## Running Locally
 
 ```bash
 bun install
-bun --bun run dev
+bun run dev        # http://localhost:3000
 ```
 
-# Building For Production
-
-To build this application for production:
+## Building & Deploying
 
 ```bash
-bun --bun run build
+bun run build      # Production build → dist/
+bun run deploy     # Build + deploy to Cloudflare Workers
 ```
 
-## Testing
+## Navigating the Presentation
 
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+- **Arrow keys** or **Space** to move between slides
+- **Dot indicators** at the bottom to jump to any slide
+- **Sun/Moon icon** in the bottom-left to toggle dark/light mode
+- URL hash (`#0`, `#1`, ... `#9`) updates automatically and supports direct linking
 
-```bash
-bun --bun run test
+## Project Structure
+
+```
+src/
+├── routes/
+│   ├── __root.tsx                    # Root layout (dark theme default)
+│   └── index.tsx                     # Renders the Presentation component
+├── components/
+│   └── presentation/
+│       ├── Presentation.tsx          # Slide orchestrator (array + direction tracking)
+│       ├── SlideShell.tsx            # Framer Motion animated slide wrapper
+│       ├── SlideNavigation.tsx       # Bottom nav bar (dots, arrows, theme toggle)
+│       └── slides/
+│           ├── TitleSlide.tsx        # 1. Research question, author, affiliation
+│           ├── SensorSlide.tsx       # 2. Atmotube Pro specs
+│           ├── WhyItMattersSlide.tsx # 3. Hypothesis and motivation
+│           ├── MethodSlide.tsx       # 4. Three zones with timestamps
+│           ├── RawDataSlide.tsx      # 5. Sample data table
+│           ├── MapSlide.tsx          # 6. Embedded Leaflet map (iframe)
+│           ├── KeyFindingSlide.tsx   # 7. Three stat cards (null result)
+│           ├── BoxPlotSlide.tsx      # 8. PM2.5 box plot image
+│           ├── InterpretationSlide.tsx # 9. Literature-backed interpretation
+│           └── LimitationsSlide.tsx  # 10. Caveats + future work + Q&A
+├── hooks/
+│   ├── useTheme.ts                  # Dark/light mode toggle
+│   └── presentation/
+│       └── useSlideNavigation.ts    # Keyboard nav, URL hash, slide state
+├── lib/
+│   └── utils.ts                     # cn() utility (clsx + tailwind-merge)
+└── styles.css                       # Tailwind + shadcn OKLch theme variables
+public/
+├── pollution_map.html               # Interactive Leaflet map (slide 6 iframe)
+└── segment_boxplot.png              # PM2.5 box plot by zone (slide 8 image)
 ```
 
-## Styling
+## Making Changes
 
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
+### Editing slide content
 
-### Removing Tailwind CSS
+Each slide is a self-contained React component in `src/components/presentation/slides/`. Edit the JSX directly — no data files or config to update.
 
-If you prefer not to use Tailwind CSS:
+### Adding or removing slides
 
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Uninstall the packages: `bun install @tailwindcss/vite tailwindcss -D`
+Update the `SLIDES` array in `src/components/presentation/Presentation.tsx`. The navigation dots, keyboard controls, and URL hashing all adapt automatically based on the array length.
 
+### Reordering slides
 
+Change the order of components in the `SLIDES` array. No other files need updating.
 
-## Routing
+### Changing the theme
 
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
+Color variables are defined in `src/styles.css` using OKLch values. The `:root` block controls light mode, the `.dark` block controls dark mode. The app defaults to dark mode (set via `className="dark"` on `<html>` in `__root.tsx`).
 
-### Adding A Route
+### Updating static assets
 
-To add a new route to your application just add a new file in the `./src/routes` directory.
+The map and box plot are served from `public/`. Replace the files with updated versions using the same filenames, or update the `src` paths in `MapSlide.tsx` and `BoxPlotSlide.tsx`.
 
-TanStack will automatically generate the content of the route file for you.
+## Stack
 
-Now that you have two routes you can use a `Link` component to navigate between them.
+- **Framework:** [TanStack Start](https://tanstack.com/start) + React 19
+- **Styling:** Tailwind CSS 4 with shadcn/ui theme variables (OKLch)
+- **Animations:** Framer Motion (`motion` package) for slide transitions
+- **Icons:** lucide-react
+- **Deployment:** Cloudflare Workers
+- **Package manager:** Bun
 
-### Adding Links
+## Content Reference
 
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
-```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-  
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+See `PRESENTATION_GUIDELINE.md` for the full experiment details, data collection methodology, analysis results, and literature citations that inform the slide content.
